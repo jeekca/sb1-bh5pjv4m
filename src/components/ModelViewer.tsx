@@ -85,11 +85,11 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     const mainDirectionalLight = new THREE.DirectionalLight(creamyWhite, 0.4); mainDirectionalLight.position.set(0, 3, 3); mainDirectionalLight.target.position.set(0, 0, 0); mainDirectionalLight.castShadow = true; mainDirectionalLight.shadow.mapSize.width = 2048; mainDirectionalLight.shadow.mapSize.height = 2048; mainDirectionalLight.shadow.bias = -0.0001; mainDirectionalLight.shadow.radius = 8; scene.add(mainDirectionalLight); scene.add(mainDirectionalLight.target);
     
     // Other lights are colored to create the sunset atmosphere
-    const keyLight = new THREE.DirectionalLight(daylightBlue, 0.8); keyLight.position.set(3, 2, 3); keyLight.target.position.set(0, 0, 0); keyLight.castShadow = true; keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048; keyLight.shadow.bias = -0.0001; keyLight.shadow.radius = 4; scene.add(keyLight); scene.add(keyLight.target);
+    const keyLight = new THREE.DirectionalLight(creamyWhite, 0.2); keyLight.position.set(3, 2, 3); keyLight.target.position.set(0, 0, 0); keyLight.castShadow = true; keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048; keyLight.shadow.bias = -0.0001; keyLight.shadow.radius = 4; scene.add(keyLight); scene.add(keyLight.target);
     const fillLight = new THREE.DirectionalLight(neutralGray, 0.7); fillLight.position.set(-3, 0, 2); fillLight.target.position.set(0, 0, 0); scene.add(fillLight); scene.add(fillLight.target);
     const rimLight = new THREE.DirectionalLight(neutralGray, 0.9); rimLight.position.set(-2, 1, -3); rimLight.target.position.set(0, 0, 0); scene.add(rimLight); scene.add(rimLight.target);
-    const rimLight2 = new THREE.DirectionalLight(darkerBlue, 0.5); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
-    const bottomLight = new THREE.DirectionalLight(greenColor, 1.0); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
+    const rimLight2 = new THREE.DirectionalLight(neutralGray, 0.5); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
+    const bottomLight = new THREE.DirectionalLight(greenColor, 2.0); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
     // <<< MODIFICATION END >>>
     
     // <<< REFACTOR START: DUAL-RESOLUTION ENVIRONMENT SETUP >>>
