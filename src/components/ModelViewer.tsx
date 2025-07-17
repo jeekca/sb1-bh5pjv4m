@@ -63,7 +63,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     composerRef.current = composer;
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.4, 0.85);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.4, 0.90);
     composer.addPass(bloomPass);
     const colorGradingPass = new ShaderPass(ColorGradingShader);
     composer.addPass(colorGradingPass);
@@ -71,15 +71,26 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     vignettePass.renderToScreen = true;
     composer.addPass(vignettePass);
     
-    // --- Lighting (unchanged) ---
+    // --- Lighting ---
+    // <<< MODIFICATION START: SUNSET LIGHTING PALETTE >>>
     const creamyWhite = new THREE.Color(0xFFF8E7);
-    const ambientLight = new THREE.AmbientLight(0x202020, 0.08); scene.add(ambientLight);
-    const mainDirectionalLight = new THREE.DirectionalLight(creamyWhite, 0.4); mainDirectionalLight.position.set(0, 3, 3); mainDirectionalLight.target.position.set(0, 0, 0); mainDirectionalLight.castShadow = true; mainDirectionalLight.shadow.mapSize.width = 2048; mainDirectionalLight.shadow.mapSize.height = 2048; mainDirectionalLight.shadow.bias = -0.0001; mainDirectionalLight.shadow.radius = 8; scene.add(mainDirectionalLight); scene.add(mainDirectionalLight.target);
-    const keyLight = new THREE.DirectionalLight(creamyWhite, 0.3); keyLight.position.set(3, 2, 3); keyLight.target.position.set(0, 0, 0); keyLight.castShadow = true; keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048; keyLight.shadow.bias = -0.0001; keyLight.shadow.radius = 4; scene.add(keyLight); scene.add(keyLight.target);
-    const fillLight = new THREE.DirectionalLight(creamyWhite, 0.3); fillLight.position.set(-3, 0, 2); fillLight.target.position.set(0, 0, 0); scene.add(fillLight); scene.add(fillLight.target);
-    const rimLight = new THREE.DirectionalLight(creamyWhite, 0.25); rimLight.position.set(-2, 1, -3); rimLight.target.position.set(0, 0, 0); scene.add(rimLight); scene.add(rimLight.target);
-    const rimLight2 = new THREE.DirectionalLight(creamyWhite, 0.2); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
-    const bottomLight = new THREE.DirectionalLight(creamyWhite, 0.1); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
+    const sunsetOrange = new THREE.Color(0xFFA07A); // A warm, light orange
+    const sunsetPurple = new THREE.Color(0x9370DB); // A medium purple
+    const sunsetPink = new THREE.Color(0xDB7093);   // A soft, deep pink
+    const greenColor = new THREE.Color(0x586A16); // A warm, light orange
+
+    const ambientLight = new THREE.AmbientLight(0x402050, 0.1); scene.add(ambientLight); // Subtle purple ambient light
+    
+    // Main light remains creamy white to properly illuminate the golf ball
+    const mainDirectionalLight = new THREE.DirectionalLight(creamyWhite, 0.85); mainDirectionalLight.position.set(0, 3, 3); mainDirectionalLight.target.position.set(0, 0, 0); mainDirectionalLight.castShadow = true; mainDirectionalLight.shadow.mapSize.width = 2048; mainDirectionalLight.shadow.mapSize.height = 2048; mainDirectionalLight.shadow.bias = -0.0001; mainDirectionalLight.shadow.radius = 8; scene.add(mainDirectionalLight); scene.add(mainDirectionalLight.target);
+    
+    // Other lights are colored to create the sunset atmosphere
+    const keyLight = new THREE.DirectionalLight(sunsetOrange, 0.6); keyLight.position.set(3, 2, 3); keyLight.target.position.set(0, 0, 0); keyLight.castShadow = true; keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048; keyLight.shadow.bias = -0.0001; keyLight.shadow.radius = 4; scene.add(keyLight); scene.add(keyLight.target);
+    const fillLight = new THREE.DirectionalLight(sunsetPurple, 0.3); fillLight.position.set(-3, 0, 2); fillLight.target.position.set(0, 0, 0); scene.add(fillLight); scene.add(fillLight.target);
+    const rimLight = new THREE.DirectionalLight(sunsetPink, 0.9); rimLight.position.set(-2, 1, -3); rimLight.target.position.set(0, 0, 0); scene.add(rimLight); scene.add(rimLight.target);
+    const rimLight2 = new THREE.DirectionalLight(sunsetPurple, 0.5); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
+    const bottomLight = new THREE.DirectionalLight(greenColor, 1.0); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
+    // <<< MODIFICATION END >>>
     
     // <<< REFACTOR START: DUAL-RESOLUTION ENVIRONMENT SETUP >>>
 
@@ -89,8 +100,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     textureLoaderRef.current = textureLoader;
 
     // Define paths for your textures
-    const lowResEnvURL = '/env-low-res-01.jpg';
-    const highResEnvURL = '/env-high-res-01.jpg';
+    const lowResEnvURL = '/env-low-res-04.jpg';
+    const highResEnvURL = '/env-high-res-04.jpg';
 
     // Store loaded textures
     let lowResEnvMap: THREE.Texture;
@@ -120,11 +131,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       // Assign the unprocessed high-res texture as the visible background
       scene.background = highResEnvMap;
       
-      // We are now manually controlling the background's rotation,
-      // so disable its matrix auto-update.
-      //scene.background.matrixAutoUpdate = false;
-      
-      // The scene.backgroundBlurriness property is no longer needed.
+      // <<< MODIFICATION START: APPLY BACKGROUND BLUR >>>
+      // Apply a subtle blur to the high-resolution background texture.
+      scene.backgroundBlurriness = 0.05;
+      // <<< MODIFICATION END >>>
     };
     
     // Start loading the textures
@@ -194,27 +204,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       (error) => console.error('Error loading golf ball GLTF model:', error)
     );
 
-    // --- Helpers for animation loop ---
-    // We only need the quaternion helper now.
-    const cameraQuaternion = new THREE.Quaternion();
-
     // --- Animation Loop ---
     const animate = () => {
       requestAnimationFrame(animate);
       
       // The controls update is all that's needed for the camera
       controls.update();
-
-      // <<< REFACTOR START: BACKGROUND SYNCHRONIZATION LOGIC >>>
-      
-      // DELETE THIS ENTIRE BLOCK. THREE.JS HANDLES THIS AUTOMATICALLY.
-      /*
-      if (scene.background instanceof THREE.Texture) {
-        // ... all the incorrect code we tried before ...
-      }
-      */
-
-      // <<< REFACTOR END >>>
 
       // The composer simply renders the scene with the camera's current view.
       composer.render();
