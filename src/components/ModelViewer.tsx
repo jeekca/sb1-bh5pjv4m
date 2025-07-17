@@ -20,7 +20,7 @@ const VignetteShader = {
   fragmentShader: `uniform sampler2D tDiffuse; uniform float offset; uniform float darkness; varying vec2 vUv; void main() { vec4 texel = texture2D(tDiffuse, vUv); vec2 uv = (vUv - vec2(0.5)) * vec2(offset); gl_FragColor = vec4(mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv)), texel.a); }`,
 };
 const ColorGradingShader = {
-  uniforms: { tDiffuse: { value: null }, contrast: { value: 1.15 }, brightness: { value: 0.1 }, saturation: { value: 1 }, },
+  uniforms: { tDiffuse: { value: null }, contrast: { value: 1.15 }, brightness: { value: 0.13 }, saturation: { value: 1 }, },
   vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
   fragmentShader: `uniform sampler2D tDiffuse; uniform float contrast; uniform float brightness; uniform float saturation; varying vec2 vUv; void main() { vec4 color = texture2D(tDiffuse, vUv); color.rgb += brightness; color.rgb = (color.rgb - 0.5) * contrast + 0.5; float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114)); color.rgb = mix(vec3(gray), color.rgb, saturation); gl_FragColor = color; }`,
 };
@@ -47,7 +47,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 6);
+    camera.position.set(0, 0, 8);
     cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -63,7 +63,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     composerRef.current = composer;
     const renderPass = new RenderPass(scene, camera);
     composer.addPass(renderPass);
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.4, 0.90);
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 0.3, 0.4, 0.8);
     composer.addPass(bloomPass);
     const colorGradingPass = new ShaderPass(ColorGradingShader);
     composer.addPass(colorGradingPass);
@@ -74,21 +74,21 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     // --- Lighting ---
     // <<< MODIFICATION START: SUNSET LIGHTING PALETTE >>>
     const creamyWhite = new THREE.Color(0xFFF8E7);
-    const sunsetOrange = new THREE.Color(0xFFA07A); // A warm, light orange
-    const sunsetPurple = new THREE.Color(0x9370DB); // A medium purple
-    const sunsetPink = new THREE.Color(0xDB7093);   // A soft, deep pink
-    const greenColor = new THREE.Color(0x586A16); // A warm, light orange
+    const daylightBlue = new THREE.Color(0x95C3D8); // A bright blue
+    const darkerBlue = new THREE.Color(0x4F99BD); // A darker blue
+    const neutralGray = new THREE.Color(0xD8DDE5);   // A neutral gray
+    const greenColor = new THREE.Color(0x405620); // A green color
 
-    const ambientLight = new THREE.AmbientLight(0x402050, 0.1); scene.add(ambientLight); // Subtle purple ambient light
+    const ambientLight = new THREE.AmbientLight(0xD5DBE3, 0.45); scene.add(ambientLight); // Subtle neutral light
     
     // Main light remains creamy white to properly illuminate the golf ball
-    const mainDirectionalLight = new THREE.DirectionalLight(creamyWhite, 0.85); mainDirectionalLight.position.set(0, 3, 3); mainDirectionalLight.target.position.set(0, 0, 0); mainDirectionalLight.castShadow = true; mainDirectionalLight.shadow.mapSize.width = 2048; mainDirectionalLight.shadow.mapSize.height = 2048; mainDirectionalLight.shadow.bias = -0.0001; mainDirectionalLight.shadow.radius = 8; scene.add(mainDirectionalLight); scene.add(mainDirectionalLight.target);
+    const mainDirectionalLight = new THREE.DirectionalLight(creamyWhite, 0.4); mainDirectionalLight.position.set(0, 3, 3); mainDirectionalLight.target.position.set(0, 0, 0); mainDirectionalLight.castShadow = true; mainDirectionalLight.shadow.mapSize.width = 2048; mainDirectionalLight.shadow.mapSize.height = 2048; mainDirectionalLight.shadow.bias = -0.0001; mainDirectionalLight.shadow.radius = 8; scene.add(mainDirectionalLight); scene.add(mainDirectionalLight.target);
     
     // Other lights are colored to create the sunset atmosphere
-    const keyLight = new THREE.DirectionalLight(sunsetOrange, 0.6); keyLight.position.set(3, 2, 3); keyLight.target.position.set(0, 0, 0); keyLight.castShadow = true; keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048; keyLight.shadow.bias = -0.0001; keyLight.shadow.radius = 4; scene.add(keyLight); scene.add(keyLight.target);
-    const fillLight = new THREE.DirectionalLight(sunsetPurple, 0.3); fillLight.position.set(-3, 0, 2); fillLight.target.position.set(0, 0, 0); scene.add(fillLight); scene.add(fillLight.target);
-    const rimLight = new THREE.DirectionalLight(sunsetPink, 0.9); rimLight.position.set(-2, 1, -3); rimLight.target.position.set(0, 0, 0); scene.add(rimLight); scene.add(rimLight.target);
-    const rimLight2 = new THREE.DirectionalLight(sunsetPurple, 0.5); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
+    const keyLight = new THREE.DirectionalLight(daylightBlue, 0.8); keyLight.position.set(3, 2, 3); keyLight.target.position.set(0, 0, 0); keyLight.castShadow = true; keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048; keyLight.shadow.bias = -0.0001; keyLight.shadow.radius = 4; scene.add(keyLight); scene.add(keyLight.target);
+    const fillLight = new THREE.DirectionalLight(neutralGray, 0.7); fillLight.position.set(-3, 0, 2); fillLight.target.position.set(0, 0, 0); scene.add(fillLight); scene.add(fillLight.target);
+    const rimLight = new THREE.DirectionalLight(neutralGray, 0.9); rimLight.position.set(-2, 1, -3); rimLight.target.position.set(0, 0, 0); scene.add(rimLight); scene.add(rimLight.target);
+    const rimLight2 = new THREE.DirectionalLight(darkerBlue, 0.5); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
     const bottomLight = new THREE.DirectionalLight(greenColor, 1.0); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
     // <<< MODIFICATION END >>>
     
@@ -100,8 +100,8 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     textureLoaderRef.current = textureLoader;
 
     // Define paths for your textures
-    const lowResEnvURL = '/env-low-res-04.jpg';
-    const highResEnvURL = '/env-high-res-04.jpg';
+    const lowResEnvURL = '/env-low-res-05.jpg';
+    const highResEnvURL = '/env-high-res-05.jpg';
 
     // Store loaded textures
     let lowResEnvMap: THREE.Texture;
@@ -133,7 +133,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       
       // <<< MODIFICATION START: APPLY BACKGROUND BLUR >>>
       // Apply a subtle blur to the high-resolution background texture.
-      scene.backgroundBlurriness = 0.05;
+      scene.backgroundBlurriness = 0.07;
       // <<< MODIFICATION END >>>
     };
     
@@ -238,26 +238,48 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     };
   }, []);
 
-  // Texture update hook (unchanged)
+  // Texture update hook (MODIFIED)
   useEffect(() => {
     if (uploadedTexture && equatorMaterialRef.current && textureLoaderRef.current) {
-        const textureLoader = textureLoaderRef.current;
-        const equatorMaterial = equatorMaterialRef.current;
-        if (textureUrlRef.current) URL.revokeObjectURL(textureUrlRef.current);
-        textureUrlRef.current = uploadedTexture;
-        if (equatorMaterial.map) equatorMaterial.map.dispose();
-        textureLoader.load(uploadedTexture, (texture) => {
-            texture.flipY = false; 
-            texture.wrapS = THREE.ClampToEdgeWrapping;
-            texture.wrapT = THREE.ClampToEdgeWrapping;
-            texture.colorSpace = THREE.SRGBColorSpace;
-            texture.generateMipmaps = true;
-            texture.minFilter = THREE.LinearMipmapLinearFilter;
-            texture.magFilter = THREE.LinearFilter;
-            texture.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() || 1;
-            equatorMaterial.map = texture;
-            equatorMaterial.needsUpdate = true;
-        });
+      const textureLoader = textureLoaderRef.current;
+      const equatorMaterial = equatorMaterialRef.current;
+      
+      // Revoke the previous URL if it exists
+      if (textureUrlRef.current) {
+        URL.revokeObjectURL(textureUrlRef.current);
+      }
+      // Set the ref to the LATEST uploaded texture URL. This acts as our source of truth.
+      textureUrlRef.current = uploadedTexture;
+
+      textureLoader.load(uploadedTexture, (texture) => {
+        // CRITICAL CHECK: Before applying the texture, ensure that the URL that was loaded
+        // still matches the LATEST requested URL. This prevents outdated loads from
+        // overwriting the material with an old texture.
+        if (textureUrlRef.current !== uploadedTexture) {
+          // This texture is from an old request, so we dispose of it and do nothing.
+          texture.dispose();
+          return;
+        }
+
+        // If the check passes, we proceed with the update.
+        // First, dispose of the previous texture that was on the material.
+        if (equatorMaterial.map) {
+          equatorMaterial.map.dispose();
+        }
+        
+        // Configure and apply the new texture
+        texture.flipY = false;
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        texture.colorSpace = THREE.SRGBColorSpace;
+        texture.generateMipmaps = true;
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() || 1;
+        
+        equatorMaterial.map = texture;
+        equatorMaterial.needsUpdate = true;
+      });
     }
   }, [uploadedTexture]);
 
