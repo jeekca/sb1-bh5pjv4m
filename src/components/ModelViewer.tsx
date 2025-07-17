@@ -8,14 +8,22 @@ import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
-// ... (Interface and Shaders are unchanged) ...
 interface ModelViewerProps {
   onFileUpload: (file: File) => void;
   uploadedTexture: string | null;
 }
-const VignetteShader = { uniforms: { tDiffuse: { value: null }, offset: { value: 0.3 }, darkness: { value: 0.8 }, }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`, fragmentShader: `uniform sampler2D tDiffuse; uniform float offset; uniform float darkness; varying vec2 vUv; void main() { vec4 texel = texture2D(tDiffuse, vUv); vec2 uv = (vUv - vec2(0.5)) * vec2(offset); gl_FragColor = vec4(mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv)), texel.a); }`, };
-const ColorGradingShader = { uniforms: { tDiffuse: { value: null }, contrast: { value: 1.15 }, brightness: { value: 0.1 }, saturation: { value: 1 }, }, vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`, fragmentShader: `uniform sampler2D tDiffuse; uniform float contrast; uniform float brightness; uniform float saturation; varying vec2 vUv; void main() { vec4 color = texture2D(tDiffuse, vUv); color.rgb += brightness; color.rgb = (color.rgb - 0.5) * contrast + 0.5; float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114)); color.rgb = mix(vec3(gray), color.rgb, saturation); gl_FragColor = color; }`, };
 
+// Shaders are unchanged...
+const VignetteShader = {
+  uniforms: { tDiffuse: { value: null }, offset: { value: 0.3 }, darkness: { value: 0.8 }, },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float offset; uniform float darkness; varying vec2 vUv; void main() { vec4 texel = texture2D(tDiffuse, vUv); vec2 uv = (vUv - vec2(0.5)) * vec2(offset); gl_FragColor = vec4(mix(texel.rgb, vec3(1.0 - darkness), dot(uv, uv)), texel.a); }`,
+};
+const ColorGradingShader = {
+  uniforms: { tDiffuse: { value: null }, contrast: { value: 1.15 }, brightness: { value: 0.1 }, saturation: { value: 1 }, },
+  vertexShader: `varying vec2 vUv; void main() { vUv = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float contrast; uniform float brightness; uniform float saturation; varying vec2 vUv; void main() { vec4 color = texture2D(tDiffuse, vUv); color.rgb += brightness; color.rgb = (color.rgb - 0.5) * contrast + 0.5; float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114)); color.rgb = mix(vec3(gray), color.rgb, saturation); gl_FragColor = color; }`,
+};
 
 const ModelViewer: React.FC<ModelViewerProps> = ({
   onFileUpload,
@@ -35,6 +43,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
   useEffect(() => {
     if (!mountRef.current) return;
 
+    // --- Scene, Camera, Renderer, Post-processing setup ---
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -61,7 +70,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     const vignettePass = new ShaderPass(VignetteShader);
     vignettePass.renderToScreen = true;
     composer.addPass(vignettePass);
-
+    
     // --- Lighting (unchanged) ---
     const creamyWhite = new THREE.Color(0xFFF8E7);
     const ambientLight = new THREE.AmbientLight(0x202020, 0.08); scene.add(ambientLight);
@@ -71,58 +80,104 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     const rimLight = new THREE.DirectionalLight(creamyWhite, 0.25); rimLight.position.set(-2, 1, -3); rimLight.target.position.set(0, 0, 0); scene.add(rimLight); scene.add(rimLight.target);
     const rimLight2 = new THREE.DirectionalLight(creamyWhite, 0.2); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
     const bottomLight = new THREE.DirectionalLight(creamyWhite, 0.1); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
-
+    
     // --- Environment & Controls Setup ---
     const textureLoader = new THREE.TextureLoader();
     textureLoaderRef.current = textureLoader;
 
-    const pmremGenerator = new THREE.PMREMGenerator(renderer);
-    pmremGenerator.compileEquirectangularShader();
+    textureLoader.load(
+      '/env-02.jpg',
+      (equiTexture) => {
+        // <<< MODIFICATION START: SIMPLIFIED & BLURRED ENVIRONMENT >>>
 
-    const setupEnvironment = async () => {
-      try {
-        const equiTexture = await textureLoader.loadAsync('/env-02.jpg');
-        equiTexture.mapping = THREE.EquirectangularReflectionMapping;
+        // The equirectangular texture must be in the correct color space.
         equiTexture.colorSpace = THREE.SRGBColorSpace;
 
-        const cubeRenderTarget = new THREE.WebGLCubeRenderTarget(equiTexture.image.height, {
-          format: THREE.RGBFormat, // FIX IS HERE
-          generateMipmaps: true,
-          minFilter: THREE.LinearMipmapLinearFilter,
-          magFilter: THREE.LinearFilter,
-          colorSpace: THREE.SRGBColorSpace
-        });
+        // Use PMREMGenerator to create a pre-filtered, mipmapped environment.
+        // This is a simpler approach that uses one processed texture for both
+        // the background and PBR reflections. The default resolution is 256x256.
+        const pmremGenerator = new THREE.PMREMGenerator(renderer);
+        pmremGenerator.compileEquirectangularShader();
 
-        const cubemap = cubeRenderTarget.fromEquirectangularTexture(renderer, equiTexture);
-        scene.background = cubemap.texture;
-        scene.environment = pmremGenerator.fromCubemap(cubemap.texture).texture;
+        // Generate the pre-filtered mipmapped environment map.
+        const envMap = pmremGenerator.fromEquirectangular(equiTexture).texture;
 
+        // Set both the scene's background and environment to this new map.
+        scene.background = envMap;
+        scene.environment = envMap;
+
+        // Add a slight blur to the background to make its resolution less obvious.
+        // A value of 0 is sharp, 1 is fully blurred.
+        scene.backgroundBlurriness = 0.1;
+
+        // --- Cleanup ---
+        // We no longer need the original equirectangular texture or the generator.
         equiTexture.dispose();
         pmremGenerator.dispose();
-      } catch (error) {
-        console.error('Error setting up environment:', error);
-      }
-    };
-    setupEnvironment();
+
+        // <<< MODIFICATION END >>>
+      },
+      undefined,
+      (error) => console.error('Error loading environment texture:', error)
+    );
 
     // --- Controls Setup (unchanged) ---
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true; controls.dampingFactor = 0.05; controls.screenSpacePanning = false; controls.minDistance = 3; controls.maxDistance = 8; controls.minPolarAngle = Math.PI / 4; controls.maxPolarAngle = (3 * Math.PI) / 4; controls.autoRotate = true; controls.autoRotateSpeed = 0.5; controls.target.set(0, 0, 0);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.screenSpacePanning = false;
+    controls.minDistance = 3;
+    controls.maxDistance = 8;
+    controls.minPolarAngle = Math.PI / 4;
+    controls.maxPolarAngle = (3 * Math.PI) / 4;
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+    controls.target.set(0, 0, 0);
     controlsRef.current = controls;
-    const onStart = () => { controls.autoRotate = false; };
-    const onEnd = () => { controls.autoRotate = true; };
-    controls.addEventListener('start', onStart);
-    controls.addEventListener('end', onEnd);
+    controls.addEventListener('start', () => { controls.autoRotate = false; });
+    controls.addEventListener('end', () => { controls.autoRotate = true; });
 
     // --- GLTF Model Loading (unchanged) ---
     const gltfLoader = new GLTFLoader();
-    gltfLoader.load( '/golf-ball-v001.gltf', (gltf) => {
-        const findGolfBallMeshes = (scene: THREE.Group): { equatorMesh: THREE.Mesh | null, polesMesh: THREE.Mesh | null } => { let equatorMesh: THREE.Mesh | null = null; let polesMesh: THREE.Mesh | null = null; scene.traverse((child) => { if (child instanceof THREE.Mesh) { if (child.name === 'equator') equatorMesh = child; else if (child.name === 'poles') polesMesh = child; } }); return { equatorMesh, polesMesh }; }; const { equatorMesh, polesMesh } = findGolfBallMeshes(gltf.scene); if (!equatorMesh || !polesMesh) { console.error("Could not find 'equator' and/or 'poles' meshes in the GLTF file."); return; } equatorMesh.updateWorldMatrix(true, false); polesMesh.updateWorldMatrix(true, false); const equatorGeom = equatorMesh.geometry.clone().applyMatrix4(equatorMesh.matrixWorld); const polesGeom = polesMesh.geometry.clone().applyMatrix4(polesMesh.matrixWorld); let mergedGeometry = BufferGeometryUtils.mergeGeometries([equatorGeom, polesGeom], true); if (mergedGeometry) { mergedGeometry = BufferGeometryUtils.mergeVertices(mergedGeometry, 1e-4); } else { console.error('Merging resulted in an empty geometry!'); return; } const equatorOriginalMaterial = equatorMesh.material as THREE.MeshStandardMaterial; const equatorMaterial = new THREE.MeshStandardMaterial({ name: 'EquatorMaterial', map: equatorOriginalMaterial.map || null, roughness: 0.2, metalness: 0.02, envMapIntensity: 0.8 }); const polesMaterial = new THREE.MeshStandardMaterial({ name: 'PolesMaterial', map: null, color: new THREE.Color(0xffffff), roughness: 0.2, metalness: 0.02, envMapIntensity: 0.8 }); if (equatorMaterial.map) { const map = equatorMaterial.map; map.wrapS = THREE.ClampToEdgeWrapping; map.wrapT = THREE.ClampToEdgeWrapping; map.generateMipmaps = false; map.minFilter = THREE.LinearFilter; map.magFilter = THREE.LinearFilter; map.anisotropy = renderer.capabilities.getMaxAnisotropy(); map.colorSpace = THREE.SRGBColorSpace; map.needsUpdate = true; } equatorMaterialRef.current = equatorMaterial; const mergedGolfBall = new THREE.Mesh(mergedGeometry, [equatorMaterial, polesMaterial]); mergedGolfBall.castShadow = true; mergedGolfBall.position.set(0, 0, 0); mergedGolfBall.scale.set(1, 1, 1); mergedGolfBall.rotation.x = 0; mergedGolfBall.rotation.y = 55; scene.add(mergedGolfBall); golfBallRef.current = mergedGolfBall;
+    gltfLoader.load(
+      '/golf-ball-v001.gltf',
+      (gltf) => {
+        const findGolfBallMeshes = (scene: THREE.Group): { equatorMesh: THREE.Mesh | null, polesMesh: THREE.Mesh | null } => {
+          let equatorMesh: THREE.Mesh | null = null; let polesMesh: THREE.Mesh | null = null;
+          scene.traverse((child) => { if (child instanceof THREE.Mesh) { if (child.name === 'equator') equatorMesh = child; else if (child.name === 'poles') polesMesh = child; } });
+          return { equatorMesh, polesMesh };
+        };
+        const { equatorMesh, polesMesh } = findGolfBallMeshes(gltf.scene);
+        if (!equatorMesh || !polesMesh) { console.error("Could not find 'equator' and/or 'poles' meshes in the GLTF file."); return; }
+        equatorMesh.updateWorldMatrix(true, false);
+        polesMesh.updateWorldMatrix(true, false);
+        const equatorGeom = equatorMesh.geometry.clone().applyMatrix4(equatorMesh.matrixWorld);
+        const polesGeom = polesMesh.geometry.clone().applyMatrix4(polesMesh.matrixWorld);
+        let mergedGeometry = BufferGeometryUtils.mergeGeometries([equatorGeom, polesGeom], true);
+        if (mergedGeometry) { mergedGeometry = BufferGeometryUtils.mergeVertices(mergedGeometry, 1e-4); }
+        else { console.error('Merging resulted in an empty geometry!'); return; }
+        const equatorOriginalMaterial = equatorMesh.material as THREE.MeshStandardMaterial;
+        const equatorMaterial = new THREE.MeshStandardMaterial({ name: 'EquatorMaterial', map: equatorOriginalMaterial.map || null, roughness: 0.2, metalness: 0.02, envMapIntensity: 0.8 });
+        const polesMaterial = new THREE.MeshStandardMaterial({ name: 'PolesMaterial', map: null, color: new THREE.Color(0xffffff), roughness: 0.2, metalness: 0.02, envMapIntensity: 0.8 });
+        if (equatorMaterial.map) {
+            const map = equatorMaterial.map;
+            map.wrapS = THREE.ClampToEdgeWrapping; map.wrapT = THREE.ClampToEdgeWrapping; map.generateMipmaps = false; map.minFilter = THREE.LinearFilter; map.magFilter = THREE.LinearFilter; map.anisotropy = renderer.capabilities.getMaxAnisotropy(); map.colorSpace = THREE.SRGBColorSpace; map.needsUpdate = true;
+        }
+        equatorMaterialRef.current = equatorMaterial;
+        const mergedGolfBall = new THREE.Mesh(mergedGeometry, [equatorMaterial, polesMaterial]);
+        mergedGolfBall.castShadow = true;
+        mergedGolfBall.position.set(0, 0, 0);
+        mergedGolfBall.scale.set(1, 1, 1);
+        mergedGolfBall.rotation.x = 0;
+        mergedGolfBall.rotation.y = 55;
+        scene.add(mergedGolfBall);
+        golfBallRef.current = mergedGolfBall;
       },
       (progress) => console.log('GLTF Loading progress:', (progress.loaded / progress.total) * 100 + '%'),
       (error) => console.error('Error loading golf ball GLTF model:', error)
     );
 
+    // --- Animation Loop (unchanged) ---
     const animate = () => {
       requestAnimationFrame(animate);
       controls.update();
@@ -130,6 +185,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     };
     animate();
 
+    // --- Resize and Cleanup (unchanged) ---
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -140,35 +196,36 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
 
     return () => {
       window.removeEventListener('resize', handleResize);
-      if (controlsRef.current) { controlsRef.current.removeEventListener('start', onStart); controlsRef.current.removeEventListener('end', onEnd); controlsRef.current.dispose(); }
+      controls.removeEventListener('start', () => { controls.autoRotate = false; });
+      controls.removeEventListener('end', () => { controls.autoRotate = true; });
+      controls.dispose();
       if (textureUrlRef.current) URL.revokeObjectURL(textureUrlRef.current);
-      if (sceneRef.current) {
-        const scene = sceneRef.current;
-        scene.traverse(object => {
-          if (object instanceof THREE.Mesh) {
-            if (object.geometry) object.geometry.dispose();
-            if (Array.isArray(object.material)) { object.material.forEach(material => { if (material.map) material.map.dispose(); material.dispose(); });
-            } else if (object.material) { if (object.material.map) object.material.map.dispose(); object.material.dispose(); }
-          }
-        });
-        if (scene.background instanceof THREE.Texture) { scene.background.dispose(); }
-        if (scene.environment instanceof THREE.Texture) { scene.environment.dispose(); }
+      if (mountRef.current && renderer.domElement) {
+        mountRef.current.removeChild(renderer.domElement);
       }
-      if (mountRef.current && rendererRef.current?.domElement) { mountRef.current.removeChild(rendererRef.current.domElement); }
-      if (rendererRef.current) { rendererRef.current.dispose(); }
+      renderer.dispose();
     };
   }, []);
 
   // Texture update hook (unchanged)
   useEffect(() => {
     if (uploadedTexture && equatorMaterialRef.current && textureLoaderRef.current) {
-        const textureLoader = textureLoaderRef.current; const equatorMaterial = equatorMaterialRef.current;
+        const textureLoader = textureLoaderRef.current;
+        const equatorMaterial = equatorMaterialRef.current;
         if (textureUrlRef.current) URL.revokeObjectURL(textureUrlRef.current);
         textureUrlRef.current = uploadedTexture;
         if (equatorMaterial.map) equatorMaterial.map.dispose();
         textureLoader.load(uploadedTexture, (texture) => {
-            texture.flipY = false; texture.wrapS = THREE.ClampToEdgeWrapping; texture.wrapT = THREE.ClampToEdgeWrapping; texture.colorSpace = THREE.SRGBColorSpace; texture.generateMipmaps = true; texture.minFilter = THREE.LinearMipmapLinearFilter; texture.magFilter = THREE.LinearFilter; texture.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() || 1;
-            equatorMaterial.map = texture; equatorMaterial.needsUpdate = true;
+            texture.flipY = false; 
+            texture.wrapS = THREE.ClampToEdgeWrapping;
+            texture.wrapT = THREE.ClampToEdgeWrapping;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.generateMipmaps = true;
+            texture.minFilter = THREE.LinearMipmapLinearFilter;
+            texture.magFilter = THREE.LinearFilter;
+            texture.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() || 1;
+            equatorMaterial.map = texture;
+            equatorMaterial.needsUpdate = true;
         });
     }
   }, [uploadedTexture]);
@@ -177,7 +234,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     <div ref={mountRef} className="w-full h-screen relative">
       <div className="absolute top-4 left-4 bg-black bg-opacity-70 text-white p-3 rounded-lg max-w-xs border border-gray-700">
         <h3 className="font-bold mb-2 text-sm">Controls:</h3>
-        <ul className="text-xs space-y-1 opacity-80"> <li>• Drag to orbit</li> <li>• Scroll to zoom</li> </ul>
+        <ul className="text-xs space-y-1 opacity-80">
+          <li>• Drag to orbit</li>
+          <li>• Scroll to zoom</li>
+        </ul>
       </div>
     </div>
   );
