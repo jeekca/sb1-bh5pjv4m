@@ -81,46 +81,63 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     const rimLight2 = new THREE.DirectionalLight(creamyWhite, 0.2); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
     const bottomLight = new THREE.DirectionalLight(creamyWhite, 0.1); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
     
-    // --- Environment & Controls Setup ---
-    const textureLoader = new THREE.TextureLoader();
+    // <<< REFACTOR START: DUAL-RESOLUTION ENVIRONMENT SETUP >>>
+
+    // Use a LoadingManager to run code after both textures are loaded.
+    const manager = new THREE.LoadingManager();
+    const textureLoader = new THREE.TextureLoader(manager);
     textureLoaderRef.current = textureLoader;
 
-    textureLoader.load(
-      '/env-02.jpg',
-      (equiTexture) => {
-        // <<< MODIFICATION START: SIMPLIFIED & BLURRED ENVIRONMENT >>>
+    // Define paths for your textures
+    const lowResEnvURL = '/env-low-res-01.jpg';
+    const highResEnvURL = '/env-high-res-01.jpg';
 
-        // The equirectangular texture must be in the correct color space.
-        equiTexture.colorSpace = THREE.SRGBColorSpace;
+    // Store loaded textures
+    let lowResEnvMap: THREE.Texture;
+    let highResEnvMap: THREE.Texture;
+    
+    // This function will execute once both textures are loaded
+    manager.onLoad = () => {
+      console.log('Environment textures loaded, setting up scene...');
 
-        // Use PMREMGenerator to create a pre-filtered, mipmapped environment.
-        // This is a simpler approach that uses one processed texture for both
-        // the background and PBR reflections. The default resolution is 256x256.
-        const pmremGenerator = new THREE.PMREMGenerator(renderer);
-        pmremGenerator.compileEquirectangularShader();
+      // --- 1. LOW-RES FOR LIGHTING/REFLECTIONS ---
+      lowResEnvMap.colorSpace = THREE.SRGBColorSpace;
+      const pmremGenerator = new THREE.PMREMGenerator(renderer);
+      pmremGenerator.compileEquirectangularShader();
+      const envMap = pmremGenerator.fromEquirectangular(lowResEnvMap).texture;
+      
+      // Assign the processed low-res texture for lighting and reflections
+      scene.environment = envMap;
 
-        // Generate the pre-filtered mipmapped environment map.
-        const envMap = pmremGenerator.fromEquirectangular(equiTexture).texture;
+      // Clean up to free memory
+      lowResEnvMap.dispose();
+      pmremGenerator.dispose();
+      
+      // --- 2. HIGH-RES FOR VISIBLE BACKGROUND ---
+      highResEnvMap.colorSpace = THREE.SRGBColorSpace;
+      highResEnvMap.mapping = THREE.EquirectangularReflectionMapping;
 
-        // Set both the scene's background and environment to this new map.
-        scene.background = envMap;
-        scene.environment = envMap;
+      // Assign the unprocessed high-res texture as the visible background
+      scene.background = highResEnvMap;
+      
+      // We are now manually controlling the background's rotation,
+      // so disable its matrix auto-update.
+      //scene.background.matrixAutoUpdate = false;
+      
+      // The scene.backgroundBlurriness property is no longer needed.
+    };
+    
+    // Start loading the textures
+    textureLoader.load(lowResEnvURL, (texture) => {
+        lowResEnvMap = texture;
+    }, undefined, (error) => console.error('Error loading LOW-RES environment texture:', error));
 
-        // Add a slight blur to the background to make its resolution less obvious.
-        // A value of 0 is sharp, 1 is fully blurred.
-        scene.backgroundBlurriness = 0.1;
+    textureLoader.load(highResEnvURL, (texture) => {
+        highResEnvMap = texture;
+    }, undefined, (error) => console.error('Error loading HIGH-RES environment texture:', error));
 
-        // --- Cleanup ---
-        // We no longer need the original equirectangular texture or the generator.
-        equiTexture.dispose();
-        pmremGenerator.dispose();
-
-        // <<< MODIFICATION END >>>
-      },
-      undefined,
-      (error) => console.error('Error loading environment texture:', error)
-    );
-
+    // <<< REFACTOR END >>>
+    
     // --- Controls Setup (unchanged) ---
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -177,10 +194,29 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
       (error) => console.error('Error loading golf ball GLTF model:', error)
     );
 
-    // --- Animation Loop (unchanged) ---
+    // --- Helpers for animation loop ---
+    // We only need the quaternion helper now.
+    const cameraQuaternion = new THREE.Quaternion();
+
+    // --- Animation Loop ---
     const animate = () => {
       requestAnimationFrame(animate);
+      
+      // The controls update is all that's needed for the camera
       controls.update();
+
+      // <<< REFACTOR START: BACKGROUND SYNCHRONIZATION LOGIC >>>
+      
+      // DELETE THIS ENTIRE BLOCK. THREE.JS HANDLES THIS AUTOMATICALLY.
+      /*
+      if (scene.background instanceof THREE.Texture) {
+        // ... all the incorrect code we tried before ...
+      }
+      */
+
+      // <<< REFACTOR END >>>
+
+      // The composer simply renders the scene with the camera's current view.
       composer.render();
     };
     animate();
