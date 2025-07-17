@@ -1,44 +1,48 @@
+// src/App.tsx
+
 import React, { useState } from 'react';
 import ModelViewer from './components/ModelViewer';
 import FileUploader from './components/FileUploader';
 
-function App() {
+const App: React.FC = () => {
+  // State to hold the temporary URL of the uploaded texture
+  const [textureUrl, setTextureUrl] = useState<string | null>(null);
+
+  // A simple handler for the file itself (optional, but good practice)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [currentTexture, setCurrentTexture] = useState<string | null>(null);
 
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
-    console.log('File uploaded:', file.name);
-
-    // Auto-dismiss notification after 3 seconds
-    setTimeout(() => {
-      setUploadedFile(null);
-    }, 3000);
+    console.log("Uploaded file:", file.name);
   };
 
-  const handleTextureUpdate = (textureUrl: string) => {
-    setCurrentTexture(textureUrl);
-    console.log('Texture updated:', textureUrl);
+  // This function will receive the texture URL from the FileUploader
+  // and update the state, triggering the change in ModelViewer.
+  const handleTextureUpdate = (url: string) => {
+    setTextureUrl(url);
   };
 
   return (
-    <div className="w-full h-screen overflow-hidden">
-      <ModelViewer
-        onFileUpload={handleFileUpload}
-        uploadedTexture={currentTexture}
+    <div className="App">
+      {/* 
+        The ModelViewer receives the textureUrl. Its useEffect hook will
+        detect when this prop changes and update the material.
+      */}
+      <ModelViewer 
+        onFileUpload={handleFileUpload} 
+        uploadedTexture={textureUrl} 
       />
+
+      {/* 
+        The FileUploader receives the callback functions. When a file
+        is uploaded, it will call onTextureUpdate with the new URL.
+      */}
       <FileUploader
         onFileUpload={handleFileUpload}
         onTextureUpdate={handleTextureUpdate}
       />
-
-      {uploadedFile && (
-        <div className="fixed top-4 right-4 bg-green-600 text-white p-3 rounded-lg shadow-lg">
-          <p className="text-sm">Texture Updated: {uploadedFile.name}</p>
-        </div>
-      )}
     </div>
   );
-}
+};
 
 export default App;
