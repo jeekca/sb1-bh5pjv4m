@@ -26,8 +26,7 @@ const ColorGradingShader = {
 };
 
 const ModelViewer: React.FC<ModelViewerProps> = ({
-  onFileUpload,
-  uploadedTexture,
+  uploadedTexture
 }) => {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene>();
@@ -47,7 +46,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     const scene = new THREE.Scene();
     sceneRef.current = scene;
     const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 0, 8);
+    camera.position.set(0, 0, 6);
     cameraRef.current = camera;
     const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
     renderer.setSize(window.innerWidth, window.innerHeight);
@@ -71,73 +70,58 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     vignettePass.renderToScreen = true;
     composer.addPass(vignettePass);
     
-    // --- Lighting ---
-    // <<< MODIFICATION START: SUNSET LIGHTING PALETTE >>>
-    const creamyWhite = new THREE.Color(0xFFF8E7);
-    const daylightBlue = new THREE.Color(0x95C3D8); // A bright blue
-    const darkerBlue = new THREE.Color(0x4F99BD); // A darker blue
-    const neutralGray = new THREE.Color(0xD8DDE5);   // A neutral gray
-    const greenColor = new THREE.Color(0x405620); // A green color
+    if ( renderer.getContext() instanceof WebGL2RenderingContext ) {
+      composer.renderTarget1.samples = 8;
+      composer.renderTarget2.samples = 8;
+  }
 
-    const ambientLight = new THREE.AmbientLight(0xD5DBE3, 0.45); scene.add(ambientLight); // Subtle neutral light
+    // --- Lighting ---
+    const creamyWhite = new THREE.Color(0xFFF8E7);
+    const neutralGray = new THREE.Color(0xD8DDE5);
+    const greenColor = new THREE.Color(0x405620);
+
+    const ambientLight = new THREE.AmbientLight(0xD5DBE3, 0.45); scene.add(ambientLight);
     
-    // Main light remains creamy white to properly illuminate the golf ball
     const mainDirectionalLight = new THREE.DirectionalLight(creamyWhite, 0.4); mainDirectionalLight.position.set(0, 3, 3); mainDirectionalLight.target.position.set(0, 0, 0); mainDirectionalLight.castShadow = true; mainDirectionalLight.shadow.mapSize.width = 2048; mainDirectionalLight.shadow.mapSize.height = 2048; mainDirectionalLight.shadow.bias = -0.0001; mainDirectionalLight.shadow.radius = 8; scene.add(mainDirectionalLight); scene.add(mainDirectionalLight.target);
     
-    // Other lights are colored to create the sunset atmosphere
     const keyLight = new THREE.DirectionalLight(creamyWhite, 0.2); keyLight.position.set(3, 2, 3); keyLight.target.position.set(0, 0, 0); keyLight.castShadow = true; keyLight.shadow.mapSize.width = 2048; keyLight.shadow.mapSize.height = 2048; keyLight.shadow.bias = -0.0001; keyLight.shadow.radius = 4; scene.add(keyLight); scene.add(keyLight.target);
     const fillLight = new THREE.DirectionalLight(neutralGray, 0.7); fillLight.position.set(-3, 0, 2); fillLight.target.position.set(0, 0, 0); scene.add(fillLight); scene.add(fillLight.target);
     const rimLight = new THREE.DirectionalLight(neutralGray, 0.9); rimLight.position.set(-2, 1, -3); rimLight.target.position.set(0, 0, 0); scene.add(rimLight); scene.add(rimLight.target);
     const rimLight2 = new THREE.DirectionalLight(neutralGray, 0.5); rimLight2.position.set(2, -1, -3); rimLight2.target.position.set(0, 0, 0); scene.add(rimLight2); scene.add(rimLight2.target);
     const bottomLight = new THREE.DirectionalLight(greenColor, 2.0); bottomLight.position.set(0, -2, 1); bottomLight.target.position.set(0, 0, 0); scene.add(bottomLight); scene.add(bottomLight.target);
-    // <<< MODIFICATION END >>>
     
-    // <<< REFACTOR START: DUAL-RESOLUTION ENVIRONMENT SETUP >>>
-
-    // Use a LoadingManager to run code after both textures are loaded.
+    // --- Environment Setup ---
     const manager = new THREE.LoadingManager();
     const textureLoader = new THREE.TextureLoader(manager);
     textureLoaderRef.current = textureLoader;
 
-    // Define paths for your textures
-    const lowResEnvURL = '/env-low-res-05.jpg';
-    const highResEnvURL = '/env-high-res-05.jpg';
+    const lowResEnvURL = '/env-low-res-v01.jpg';
+    const highResEnvURL = '/env-high-res-v01.jpg';
 
-    // Store loaded textures
     let lowResEnvMap: THREE.Texture;
     let highResEnvMap: THREE.Texture;
     
-    // This function will execute once both textures are loaded
     manager.onLoad = () => {
       console.log('Environment textures loaded, setting up scene...');
 
-      // --- 1. LOW-RES FOR LIGHTING/REFLECTIONS ---
       lowResEnvMap.colorSpace = THREE.SRGBColorSpace;
       const pmremGenerator = new THREE.PMREMGenerator(renderer);
       pmremGenerator.compileEquirectangularShader();
       const envMap = pmremGenerator.fromEquirectangular(lowResEnvMap).texture;
       
-      // Assign the processed low-res texture for lighting and reflections
       scene.environment = envMap;
 
-      // Clean up to free memory
       lowResEnvMap.dispose();
       pmremGenerator.dispose();
       
-      // --- 2. HIGH-RES FOR VISIBLE BACKGROUND ---
       highResEnvMap.colorSpace = THREE.SRGBColorSpace;
       highResEnvMap.mapping = THREE.EquirectangularReflectionMapping;
 
-      // Assign the unprocessed high-res texture as the visible background
       scene.background = highResEnvMap;
       
-      // <<< MODIFICATION START: APPLY BACKGROUND BLUR >>>
-      // Apply a subtle blur to the high-resolution background texture.
       scene.backgroundBlurriness = 0.07;
-      // <<< MODIFICATION END >>>
     };
     
-    // Start loading the textures
     textureLoader.load(lowResEnvURL, (texture) => {
         lowResEnvMap = texture;
     }, undefined, (error) => console.error('Error loading LOW-RES environment texture:', error));
@@ -146,9 +130,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
         highResEnvMap = texture;
     }, undefined, (error) => console.error('Error loading HIGH-RES environment texture:', error));
 
-    // <<< REFACTOR END >>>
-    
-    // --- Controls Setup (unchanged) ---
+    // --- Controls Setup ---
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.05;
@@ -164,10 +146,10 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     controls.addEventListener('start', () => { controls.autoRotate = false; });
     controls.addEventListener('end', () => { controls.autoRotate = true; });
 
-    // --- GLTF Model Loading (unchanged) ---
+    // --- GLTF Model Loading ---
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(
-      '/golf-ball-v001.gltf',
+      '/golf-ball-v01.gltf',
       (gltf) => {
         const findGolfBallMeshes = (scene: THREE.Group): { equatorMesh: THREE.Mesh | null, polesMesh: THREE.Mesh | null } => {
           let equatorMesh: THREE.Mesh | null = null; let polesMesh: THREE.Mesh | null = null;
@@ -191,12 +173,41 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
             map.wrapS = THREE.ClampToEdgeWrapping; map.wrapT = THREE.ClampToEdgeWrapping; map.generateMipmaps = false; map.minFilter = THREE.LinearFilter; map.magFilter = THREE.LinearFilter; map.anisotropy = renderer.capabilities.getMaxAnisotropy(); map.colorSpace = THREE.SRGBColorSpace; map.needsUpdate = true;
         }
         equatorMaterialRef.current = equatorMaterial;
+        
+        // <<< MODIFICATION START: APPLY DEFAULT PREVIEW TEXTURE ON LOAD >>>
+        const initialTextureLoader = textureLoaderRef.current;
+        if (initialTextureLoader) {
+          initialTextureLoader.load(
+            '/tex-default-preview.png',
+            (defaultTexture) => {
+              const material = equatorMaterialRef.current;
+              if (material) {
+                // Configure and apply the default texture
+                defaultTexture.flipY = false;
+                defaultTexture.wrapS = THREE.ClampToEdgeWrapping;
+                defaultTexture.wrapT = THREE.ClampToEdgeWrapping;
+                defaultTexture.colorSpace = THREE.SRGBColorSpace;
+                defaultTexture.generateMipmaps = true;
+                defaultTexture.minFilter = THREE.LinearMipmapLinearFilter;
+                defaultTexture.magFilter = THREE.LinearFilter;
+                defaultTexture.anisotropy = rendererRef.current?.capabilities.getMaxAnisotropy() || 1;
+                
+                material.map = defaultTexture;
+                material.needsUpdate = true;
+              }
+            },
+            undefined, // no progress callback needed
+            (error) => console.error('Error loading default preview texture:', error)
+          );
+        }
+        // <<< MODIFICATION END >>>
+
         const mergedGolfBall = new THREE.Mesh(mergedGeometry, [equatorMaterial, polesMaterial]);
         mergedGolfBall.castShadow = true;
         mergedGolfBall.position.set(0, 0, 0);
         mergedGolfBall.scale.set(1, 1, 1);
         mergedGolfBall.rotation.x = 0;
-        mergedGolfBall.rotation.y = 55;
+        mergedGolfBall.rotation.y = 0;
         scene.add(mergedGolfBall);
         golfBallRef.current = mergedGolfBall;
       },
@@ -207,16 +218,12 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     // --- Animation Loop ---
     const animate = () => {
       requestAnimationFrame(animate);
-      
-      // The controls update is all that's needed for the camera
       controls.update();
-
-      // The composer simply renders the scene with the camera's current view.
       composer.render();
     };
     animate();
 
-    // --- Resize and Cleanup (unchanged) ---
+    // --- Resize and Cleanup ---
     const handleResize = () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -238,36 +245,27 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     };
   }, []);
 
-  // Texture update hook (MODIFIED)
+  // Texture update hook
   useEffect(() => {
     if (uploadedTexture && equatorMaterialRef.current && textureLoaderRef.current) {
       const textureLoader = textureLoaderRef.current;
       const equatorMaterial = equatorMaterialRef.current;
       
-      // Revoke the previous URL if it exists
       if (textureUrlRef.current) {
         URL.revokeObjectURL(textureUrlRef.current);
       }
-      // Set the ref to the LATEST uploaded texture URL. This acts as our source of truth.
       textureUrlRef.current = uploadedTexture;
 
       textureLoader.load(uploadedTexture, (texture) => {
-        // CRITICAL CHECK: Before applying the texture, ensure that the URL that was loaded
-        // still matches the LATEST requested URL. This prevents outdated loads from
-        // overwriting the material with an old texture.
         if (textureUrlRef.current !== uploadedTexture) {
-          // This texture is from an old request, so we dispose of it and do nothing.
           texture.dispose();
           return;
         }
 
-        // If the check passes, we proceed with the update.
-        // First, dispose of the previous texture that was on the material.
         if (equatorMaterial.map) {
           equatorMaterial.map.dispose();
         }
         
-        // Configure and apply the new texture
         texture.flipY = false;
         texture.wrapS = THREE.ClampToEdgeWrapping;
         texture.wrapT = THREE.ClampToEdgeWrapping;
