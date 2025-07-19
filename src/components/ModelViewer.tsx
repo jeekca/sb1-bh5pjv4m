@@ -69,11 +69,6 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     const vignettePass = new ShaderPass(VignetteShader);
     vignettePass.renderToScreen = true;
     composer.addPass(vignettePass);
-    
-    if ( renderer.getContext() instanceof WebGL2RenderingContext ) {
-      composer.renderTarget1.samples = 8;
-      composer.renderTarget2.samples = 8;
-  }
 
     // --- Lighting ---
     const creamyWhite = new THREE.Color(0xFFF8E7);
