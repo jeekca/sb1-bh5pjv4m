@@ -144,7 +144,7 @@ const ModelViewer: React.FC<ModelViewerProps> = ({
     // --- GLTF Model Loading ---
     const gltfLoader = new GLTFLoader();
     gltfLoader.load(
-      '/golf-ball-v02.gltf',
+      '/golf-ball-v03.gltf',
       (gltf) => {
         const findGolfBallMeshes = (scene: THREE.Group): { equatorMesh: THREE.Mesh | null, polesMesh: THREE.Mesh | null } => {
           let equatorMesh: THREE.Mesh | null = null; let polesMesh: THREE.Mesh | null = null;
