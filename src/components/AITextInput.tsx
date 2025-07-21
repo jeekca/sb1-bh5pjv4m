@@ -32,10 +32,13 @@ const AITextInput: React.FC<AITextInputProps> = ({
       setTimeout(() => {
         setIsLoading(false);
         setIsFocused(true);
-        // Programmatically focus the input element to show the cursor
-        if (inputRef.current) {
-          inputRef.current.focus();
-        }
+        
+        // Use setTimeout to ensure focus happens after React state updates
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.focus();
+          }
+        }, 0);
       }, 3000);
     }
   };
