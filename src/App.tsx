@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import ModelViewer from './components/ModelViewer';
 import FileUploader from './components/FileUploader';
+import AITextInput from './components/AITextInput';
 
 const App: React.FC = () => {
   // State to hold the temporary URL of the uploaded texture
@@ -20,6 +21,11 @@ const App: React.FC = () => {
   // and update the state, triggering the change in ModelViewer.
   const handleTextureUpdate = (url: string) => {
     setTextureUrl(url);
+  };
+
+  const handleTextInputChange = (value: string) => {
+    console.log('AI Text Input:', value);
+    // You can add logic here to process the AI text input
   };
 
   return (
@@ -41,6 +47,9 @@ const App: React.FC = () => {
         onFileUpload={handleFileUpload}
         onTextureUpdate={handleTextureUpdate}
       />
+
+      {/* AI Text Input Field */}
+      <AITextInput onInputChange={handleTextInputChange} />
     </div>
   );
 };
