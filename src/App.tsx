@@ -61,21 +61,115 @@ const App: React.FC = () => {
       
       setDesigns(prevDesigns => [newLoadingDesign, ...prevDesigns]);
       
-      // Simulate design generation completion after 3-5 seconds
-      setTimeout(() => {
+      // Generate image using FAL AI
+      generateImageWithFal(value.trim(), newLoadingDesign.id);
+    }
+  };
+
+  // FAL AI image generation function
+  const generateImageWithFal = (prompt: string, designId: string) => {
+    // A reference to an existing EventSource, if any, to close it before starting a new one.
+    let eventSource: EventSource | null = null;
+
+    // Cleanup function to close the connection
+    const closeConnection = () => {
+      if (eventSource) {
+        eventSource.close();
+        eventSource = null;
+        console.log("SSE Connection Closed.");
+      }
+    };
+
+    // 1. Construct the URL for our proxy, passing the prompt as a query parameter.
+    //    `encodeURIComponent` is crucial to handle special characters in the prompt.
+    const url = `/api/proxy?prompt=${encodeURIComponent(prompt)}`;
+
+    // 2. Create a new EventSource to connect to our server.
+    console.log("Connecting to SSE endpoint...");
+    eventSource = new EventSource(url);
+
+    // 3. Add listeners for the custom events from our server
+
+    // Listener for 'status' events
+    eventSource.addEventListener('status', (event) => {
+      const data = JSON.parse(event.data);
+      console.log(`STATUS UPDATE: ${data.status}`);
+      // You can use this to update a UI element, e.g., "Status: In Progress"
+    });
+
+    // Listener for 'log' events
+    eventSource.addEventListener('log', (event) => {
+      const data = JSON.parse(event.data);
+      console.log(`LOG: ${data.message}`);
+      // You can display these logs in a console-like view in your UI
+    });
+
+    // Listener for the final 'result' event
+    eventSource.addEventListener('result', (event) => {
+      const result = JSON.parse(event.data);
+      console.log("FINAL RESULT RECEIVED:", result);
+      
+      // Extract the image URL from the result
+      const imageUrl = result.data?.images?.[0]?.url;
+      
+      if (imageUrl) {
+        // Update the design with the generated image
         setDesigns(prevDesigns => 
           prevDesigns.map(design => 
-            design.id === newLoadingDesign.id 
+            design.id === designId 
               ? { 
                   ...design, 
                   isLoading: false,
-                  imageUrl: '/tex-default-preview.png' // Use default preview as placeholder
+                  imageUrl: imageUrl
                 }
               : design
           )
         );
-      }, Math.random() * 2000 + 3000); // Random delay between 3-5 seconds
-    }
+        
+        // Apply the generated texture to the golf ball
+        setTextureUrl(imageUrl);
+        
+        console.log("Generated image applied to golf ball:", imageUrl);
+      } else {
+        console.error("No image URL found in result:", result);
+        // Update design to show error state
+        setDesigns(prevDesigns => 
+          prevDesigns.map(design => 
+            design.id === designId 
+              ? { 
+                  ...design, 
+                  isLoading: false,
+                  imageUrl: '/tex-default-preview.png' // Fallback to default
+                }
+              : design
+          )
+        );
+      }
+
+      // The process is complete, so we close the connection.
+      closeConnection();
+    });
+
+    // 4. Handle any errors with the connection
+    eventSource.onerror = (error) => {
+      console.error("EventSource failed:", error);
+      
+      // Update design to show error state
+      setDesigns(prevDesigns => 
+        prevDesigns.map(design => 
+          design.id === designId 
+            ? { 
+                ...design, 
+                isLoading: false,
+                imageUrl: '/tex-default-preview.png' // Fallback to default
+              }
+            : design
+        )
+      );
+      
+      // An error automatically closes the connection, but we ensure it's cleaned up.
+      closeConnection();
+    };
   };
 
   return (
