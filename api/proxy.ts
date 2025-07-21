@@ -1,5 +1,3 @@
-// File: /api/proxy.ts
-
 // This line MUST be at the very top to load your .env file.
 import 'dotenv/config';
 
