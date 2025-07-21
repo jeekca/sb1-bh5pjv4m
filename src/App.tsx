@@ -4,6 +4,13 @@ import React, { useState } from 'react';
 import ModelViewer from './components/ModelViewer';
 import FileUploader from './components/FileUploader';
 import AITextInput from './components/AITextInput';
+import DesignsSection from './components/DesignsSection';
+
+interface Design {
+  id: string;
+  imageUrl: string;
+  title: string;
+}
 
 const App: React.FC = () => {
   // State to hold the temporary URL of the uploaded texture
@@ -12,8 +19,20 @@ const App: React.FC = () => {
   // A simple handler for the file itself (optional, but good practice)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 
+  // State for designs list
+  const [designs, setDesigns] = useState<Design[]>([]);
+
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
+    
+    // Add new design to the top of the list (prepend)
+    const newDesign: Design = {
+      id: Date.now().toString(),
+      imageUrl: URL.createObjectURL(file),
+      title: file.name.replace(/\.[^/.]+$/, '') // Remove file extension
+    };
+    
+    setDesigns(prevDesigns => [newDesign, ...prevDesigns]);
     console.log("Uploaded file:", file.name);
   };
 
@@ -50,6 +69,9 @@ const App: React.FC = () => {
 
       {/* AI Text Input Field */}
       <AITextInput onInputChange={handleTextInputChange} />
+
+      {/* Designs Section */}
+      <DesignsSection designs={designs} />
     </div>
   );
 };
