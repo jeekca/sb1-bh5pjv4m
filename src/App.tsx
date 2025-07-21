@@ -10,6 +10,7 @@ interface Design {
   id: string;
   imageUrl: string;
   title: string;
+  isLoading?: boolean;
 }
 
 const App: React.FC = () => {
@@ -22,17 +23,31 @@ const App: React.FC = () => {
   // State for designs list
   const [designs, setDesigns] = useState<Design[]>([]);
 
+  // Add initial loading design on component mount
+  useEffect(() => {
+    const initialLoadingDesign: Design = {
+      id: 'initial-loading',
+      imageUrl: '',
+      title: 'Generating design...',
+      isLoading: true
+    };
+    
+    setDesigns([initialLoadingDesign]);
+  }, []);
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
     
-    // Add new design to the top of the list (prepend)
-    const newDesign: Design = {
-      id: Date.now().toString(),
-      imageUrl: URL.createObjectURL(file),
-      title: file.name.replace(/\.[^/.]+$/, '') // Remove file extension
-    };
-    
-    setDesigns(prevDesigns => [newDesign, ...prevDesigns]);
+    // Only add design when called from file upload (not from text input)
+    if (file) {
+      const newDesign: Design = {
+        id: Date.now().toString(),
+        imageUrl: URL.createObjectURL(file),
+        title: file.name.replace(/\.[^/.]+$/, ''), // Remove file extension
+        isLoading: false
+      };
+      
+      setDesigns(prevDesigns => [newDesign, ...prevDesigns]);
+    }
     console.log("Uploaded file:", file.name);
   };
 
@@ -42,9 +57,36 @@ const App: React.FC = () => {
     setTextureUrl(url);
   };
 
-  const handleTextInputChange = (value: string) => {
-    console.log('AI Text Input:', value);
-    // You can add logic here to process the AI text input
+  // Handle Enter key press from AI text input
+  const handleTextInputSubmit = (value: string) => {
+    if (value.trim()) {
+      console.log('AI Text Input submitted:', value);
+      
+      // Add new loading design to the top of the list
+      const newLoadingDesign: Design = {
+        id: `loading-${Date.now()}`,
+        imageUrl: '',
+        title: value.trim(),
+        isLoading: true
+      };
+      
+      setDesigns(prevDesigns => [newLoadingDesign, ...prevDesigns]);
+      
+      // Simulate design generation completion after 3-5 seconds
+      setTimeout(() => {
+        setDesigns(prevDesigns => 
+          prevDesigns.map(design => 
+            design.id === newLoadingDesign.id 
+              ? { 
+                  ...design, 
+                  isLoading: false,
+                  imageUrl: '/tex-default-preview.png' // Use default preview as placeholder
+                }
+              : design
+          )
+        );
+      }, Math.random() * 2000 + 3000); // Random delay between 3-5 seconds
+    }
   };
 
   return (
@@ -68,7 +110,7 @@ const App: React.FC = () => {
       />
 
       {/* AI Text Input Field */}
-      <AITextInput onInputChange={handleTextInputChange} />
+      <AITextInput onInputSubmit={handleTextInputSubmit} />
 
       {/* Designs Section */}
       <DesignsSection designs={designs} />

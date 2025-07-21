@@ -3,12 +3,12 @@ import { Sparkles, Loader2 } from 'lucide-react';
 
 interface AITextInputProps {
   placeholder?: string;
-  onInputChange?: (value: string) => void;
+  onInputSubmit?: (value: string) => void;
 }
 
 const AITextInput: React.FC<AITextInputProps> = ({ 
   placeholder = "Imagine your custom ball design...",
-  onInputChange 
+  onInputSubmit 
 }) => {
   const [isFocused, setIsFocused] = useState(false);
   const [inputValue, setInputValue] = useState('');
@@ -20,11 +20,16 @@ const AITextInput: React.FC<AITextInputProps> = ({
     
     const value = e.target.value;
     setInputValue(value);
-    onInputChange?.(value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim() && !isLoading) {
+      // Call the submit handler with the current input value
+      onInputSubmit?.(inputValue);
+      
+      // Clear the input field after submission
+      setInputValue('');
+      
       setIsLoading(true);
       setIsFocused(false); // Remove focus during loading
       

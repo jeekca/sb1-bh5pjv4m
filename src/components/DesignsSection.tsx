@@ -1,10 +1,11 @@
 import React from 'react';
-import { Image } from 'lucide-react';
+import { Image, Loader2 } from 'lucide-react';
 
 interface Design {
   id: string;
   imageUrl: string;
   title: string;
+  isLoading?: boolean;
 }
 
 interface DesignsSectionProps {
@@ -49,21 +50,35 @@ const DesignsSection: React.FC<DesignsSectionProps> = ({ designs }) => {
                 >
                   {/* Thumbnail container with 16:9 aspect ratio */}
                   <div className="relative w-full aspect-video bg-gray-800/50">
-                    <img
-                      src={design.imageUrl}
-                      alt={design.title}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
+                    {design.isLoading ? (
+                      /* Loading state with purple border and centered spinner */
+                      <div 
+                        className="w-full h-full border-2 border-purple-500/60 bg-gray-900/30 flex items-center justify-center"
+                        aria-label="Design is being generated"
+                      >
+                        <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                      </div>
+                    ) : (
+                      <img
+                        src={design.imageUrl}
+                        alt={design.title}
+                        className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    )}
                     
                     {/* Subtle overlay on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    {!design.isLoading && (
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    )}
                   </div>
                   
                   {/* Title overlay */}
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                    <p className="text-white text-xs font-medium truncate">{design.title}</p>
-                  </div>
+                  {!design.isLoading && (
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
+                      <p className="text-white text-xs font-medium truncate">{design.title}</p>
+                    </div>
+                  )}
                 </div>
               ))
             )}
