@@ -45,14 +45,14 @@ const AITextInput: React.FC<AITextInputProps> = ({
           className="
             w-80 sm:w-96 h-14 pl-12 pr-6 
             bg-gradient-to-r from-purple-900/20 to-pink-900/20 
-            backdrop-blur-md border border-purple-400/30 
+            backdrop-blur-md border-2 border-purple-400/50 
             rounded-2xl text-white placeholder-purple-300/70 
             focus:outline-none focus:ring-2 focus:ring-pink-400/50 
-            focus:border-pink-400/50 focus:bg-gradient-to-r 
+            focus:border-pink-400/70 focus:bg-gradient-to-r 
             focus:from-purple-900/30 focus:to-pink-900/30
             transition-all duration-300 ease-in-out
             shadow-lg shadow-purple-500/10
-            hover:shadow-purple-500/20 hover:border-purple-400/50
+            hover:shadow-purple-500/20 hover:border-purple-400/70
             font-medium text-sm
           "
           style={{
@@ -61,7 +61,7 @@ const AITextInput: React.FC<AITextInputProps> = ({
           }}
         />
         
-        {/* Animated gradient border effect */}
+        {/* Static gradient border effect */}
         <div className="
           absolute inset-0 rounded-2xl 
           bg-gradient-to-r from-purple-500 to-pink-500 
@@ -69,19 +69,6 @@ const AITextInput: React.FC<AITextInputProps> = ({
           transition-opacity duration-300 ease-in-out
           pointer-events-none
           blur-sm
-        " />
-        
-        {/* Sparkle background effects */}
-        <div className="
-          absolute -top-1 -right-1 w-3 h-3 
-          bg-pink-400 rounded-full opacity-60 
-          animate-pulse
-        " />
-        <div className="
-          absolute -bottom-1 -left-1 w-2 h-2 
-          bg-purple-400 rounded-full opacity-40 
-          animate-pulse
-          animation-delay-500
         " />
       </div>
       
