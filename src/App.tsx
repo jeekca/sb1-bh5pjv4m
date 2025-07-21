@@ -23,17 +23,6 @@ const App: React.FC = () => {
   // State for designs list
   const [designs, setDesigns] = useState<Design[]>([]);
 
-  // Add initial loading design on component mount
-  useEffect(() => {
-    const initialLoadingDesign: Design = {
-      id: 'initial-loading',
-      imageUrl: '',
-      title: 'Generating design...',
-      isLoading: true
-    };
-    
-    setDesigns([initialLoadingDesign]);
-  }, []);
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
     
