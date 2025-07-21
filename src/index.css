@@ -25,7 +25,7 @@
 
 /* Smooth gradient transitions */
 .gradient-border {
-  background: linear-gradient(45deg, #a855f7, #f472b6);
+  background: linear-gradient(45deg, #8b5cf6, #ec4899);
   background-size: 200% 200%;
   animation: gradient-shift 3s ease infinite;
 }
