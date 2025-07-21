@@ -1,3 +1,43 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom animations for sparkle effects */
+@keyframes pulse-delayed {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animation-delay-500 {
+  animation-delay: 500ms;
+}
+
+/* Enhanced focus styles for better accessibility */
+.ai-input-focus:focus {
+  box-shadow: 
+    0 0 0 2px rgba(236, 72, 153, 0.3),
+    0 10px 25px rgba(147, 51, 234, 0.2);
+}
+
+/* Smooth gradient transitions */
+.gradient-border {
+  background: linear-gradient(45deg, #8b5cf6, #ec4899);
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}

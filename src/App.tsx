@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import ModelViewer from './components/ModelViewer';
 import FileUploader from './components/FileUploader';
+import AITextInput from './components/AITextInput';
 
 const App: React.FC = () => {
   // State to hold the temporary URL of the uploaded texture
@@ -10,6 +11,7 @@ const App: React.FC = () => {
 
   // A simple handler for the file itself (optional, but good practice)
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [aiInputText, setAiInputText] = useState<string>('');
 
   const handleFileUpload = (file: File) => {
     setUploadedFile(file);
@@ -22,6 +24,10 @@ const App: React.FC = () => {
     setTextureUrl(url);
   };
 
+  const handleAITextChange = (text: string) => {
+    setAiInputText(text);
+    console.log("AI Input text:", text);
+  };
   return (
     <div className="App">
       {/* 
@@ -40,6 +46,15 @@ const App: React.FC = () => {
       <FileUploader
         onFileUpload={handleFileUpload}
         onTextureUpdate={handleTextureUpdate}
+      />
+
+      {/* 
+        AI-inspired text input field positioned at center bottom,
+        aligned with the upload button for visual balance
+      */}
+      <AITextInput
+        placeholder="Describe your golf ball design..."
+        onTextChange={handleAITextChange}
       />
     </div>
   );
