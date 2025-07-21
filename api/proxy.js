@@ -20,25 +20,40 @@ export default async function handler(req, res) {
     credentials: apiKey,
   });
 
-  // 2. Get the prompt from the client's request (query parameter)
-  const { prompt } = req.query;
+  // 2. Get ALL parameters from the client's request query string
+  //    The 'prompt' is required, the rest are optional.
+  const { prompt, ...restOfInput } = req.query;
   if (!prompt) {
     return res.status(400).json({ error: "Prompt is required." });
   }
 
-  // 3. Set headers for Server-Sent Events (SSE)
+  // 3. Convert query parameters to appropriate data types
+  //    Since all query parameters arrive as strings, we need to convert them
+  const processedInput = {
+    prompt: prompt,
+    ...restOfInput
+  };
+
+  // Convert numeric parameters from strings to numbers
+  if (processedInput.seed) {
+    processedInput.seed = parseInt(processedInput.seed, 10);
+  }
+  if (processedInput.num_images) {
+    processedInput.num_images = parseInt(processedInput.num_images, 10);
+  }
+
+  console.log("Processed input parameters:", processedInput);
+
+  // 4. Set headers for Server-Sent Events (SSE)
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.flushHeaders(); // Flush the headers to establish the connection
 
   try {
-    // 4. Call fal.subscribe and stream updates to the client
+    // 5. Call fal.subscribe and stream updates to the client
     const result = await fal.subscribe("fal-ai/flux-pro/kontext/text-to-image", {
-      input: {
-        // Use the prompt from the client
-        prompt: prompt,
-      },
+      input: processedInput,
       logs: true,
       onQueueUpdate: (update) => {
         // Send status updates to the client
@@ -53,7 +68,7 @@ export default async function handler(req, res) {
       },
     });
 
-    // 5. Send the final result to the client
+    // 6. Send the final result to the client
     sendEvent(res, 'result', result);
 
   } catch (error) {
@@ -61,7 +76,7 @@ export default async function handler(req, res) {
     // Send an error event to the client
     sendEvent(res, 'error', { message: error.message || 'An unknown error occurred.' });
   } finally {
-    // 6. Close the connection
+    // 7. Close the connection
     res.end();
   }
 }

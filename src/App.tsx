@@ -67,7 +67,25 @@ const App: React.FC = () => {
   };
 
   // FAL AI image generation function
-  const generateImageWithFal = (prompt: string, designId: string) => {
+  const generateImageWithFal = (userPrompt: string, designId: string, options?: any) => {
+    // 1. Define the parameters for the Fal.ai call.
+    //    We can merge default values with user-provided options.
+    const defaultParams = {
+      prompt: userPrompt,
+      image_size: "landscape_16_9",
+      seed: Math.floor(Math.random() * 1000000), // Add a random seed
+      num_images: 1,
+    };
+
+    const params = { ...defaultParams, ...options };
+
+    // 2. Use URLSearchParams to build a safe query string.
+    //    This automatically handles encoding of all values.
+    const query = new URLSearchParams(params).toString();
+    const url = `/api/proxy?${query}`;
+
+    console.log(`Connecting to proxy with URL: ${url}`);
+
     // A reference to an existing EventSource, if any, to close it before starting a new one.
     let eventSource: EventSource | null = null;
 
@@ -80,28 +98,21 @@ const App: React.FC = () => {
       }
     };
 
-    // 1. Construct the URL for our proxy, passing the prompt as a query parameter.
-    //    `encodeURIComponent` is crucial to handle special characters in the prompt.
-    const url = `/api/proxy?prompt=${encodeURIComponent(prompt)}`;
-
-    // 2. Create a new EventSource to connect to our server.
-    console.log("Connecting to SSE endpoint...");
+    // 3. Create the EventSource and add listeners
     eventSource = new EventSource(url);
-
-    // 3. Add listeners for the custom events from our server
 
     // Listener for 'status' events
     eventSource.addEventListener('status', (event) => {
       const data = JSON.parse(event.data);
       console.log(`STATUS UPDATE: ${data.status}`);
-      // You can use this to update a UI element, e.g., "Status: In Progress"
+      // Update your UI here
     });
 
     // Listener for 'log' events
     eventSource.addEventListener('log', (event) => {
       const data = JSON.parse(event.data);
       console.log(`LOG: ${data.message}`);
-      // You can display these logs in a console-like view in your UI
+      // Update your UI here
     });
 
     // Listener for the final 'result' event
@@ -109,7 +120,7 @@ const App: React.FC = () => {
       const result = JSON.parse(event.data);
       console.log("FINAL RESULT RECEIVED:", result);
       
-      // Extract the image URL from the result
+      // Use the result in your Three.js scene...
       const imageUrl = result.data?.images?.[0]?.url;
       
       if (imageUrl) {
@@ -150,7 +161,7 @@ const App: React.FC = () => {
       closeConnection();
     });
 
-    // 4. Handle any errors with the connection
+    // Handle any errors with the connection
     eventSource.onerror = (error) => {
       console.error("EventSource failed:", error);
       
