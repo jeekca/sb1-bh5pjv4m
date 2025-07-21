@@ -13,6 +13,7 @@ const AITextInput: React.FC<AITextInputProps> = ({
   const [isFocused, setIsFocused] = useState(false);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isLoading) return; // Prevent input during loading
@@ -31,6 +32,10 @@ const AITextInput: React.FC<AITextInputProps> = ({
       setTimeout(() => {
         setIsLoading(false);
         setIsFocused(true);
+        // Programmatically focus the input element to show the cursor
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
       }, 3000);
     }
   };
@@ -97,6 +102,7 @@ const AITextInput: React.FC<AITextInputProps> = ({
           
           {/* Text input */}
           <input
+            ref={inputRef}
             type="text"
             value={inputValue}
             onChange={handleInputChange}
