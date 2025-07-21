@@ -46,7 +46,7 @@ const AITextInput: React.FC<AITextInputProps> = ({
             w-80 sm:w-96 h-14 pl-12 pr-6 
             bg-gradient-to-r from-purple-900/20 to-pink-900/20 
             backdrop-blur-md border-2 border-purple-400/50 
-            rounded-2xl text-white placeholder-purple-300/70 
+            rounded-2xl text-white placeholder-purple-100/95 
             focus:outline-none focus:ring-2 focus:ring-pink-400/50 
             focus:border-pink-400/70 focus:bg-gradient-to-r 
             focus:from-purple-900/30 focus:to-pink-900/30
