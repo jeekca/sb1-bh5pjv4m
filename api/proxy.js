@@ -3,15 +3,35 @@ import { fal } from "@fal-ai/client";
 
 // This is a helper function to format and send SSE messages
 const sendEvent = (res, eventName, data) => {
-  res.write(`event: ${eventName}\n`);
-  res.write(`data: ${JSON.stringify(data)}\n\n`);
+  // Add a check to ensure the response is still writable before sending
+  if (!res.writableEnded) {
+    res.write(`event: ${eventName}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  }
 };
 
 export default async function handler(req, res) {
+  // --- START: CORS & SSE HEADERS (THE FIX) ---
+  // Allow requests from any origin. For production, you might want to restrict this
+  // to your specific domain, e.g., 'https://your-app-name.vercel.app'
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  
+  // These are the essential headers for Server-Sent Events
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders(); // Flush the headers to establish the connection
+  // --- END: CORS & SSE HEADERS ---
+
   // 1. Get the secret key from server-side environment variables
   const apiKey = process.env.FAL_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "API key not configured." });
+    // We can't use res.status(500).json() here as headers are already sent.
+    // Instead, we send an error event and close the connection.
+    sendEvent(res, 'error', { message: 'API key not configured on the server.' });
+    res.end();
+    return;
   }
 
   // Configure the fal client with your credentials
@@ -24,7 +44,9 @@ export default async function handler(req, res) {
   //    The 'prompt' is required, the rest are optional.
   const { prompt, ...restOfInput } = req.query;
   if (!prompt) {
-    return res.status(400).json({ error: "Prompt is required." });
+    sendEvent(res, 'error', { message: "A 'prompt' is required." });
+    res.end();
+    return;
   }
 
   // 3. Convert query parameters to appropriate data types
@@ -43,12 +65,6 @@ export default async function handler(req, res) {
   }
 
   console.log("Processed input parameters:", processedInput);
-
-  // 4. Set headers for Server-Sent Events (SSE)
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.flushHeaders(); // Flush the headers to establish the connection
 
   try {
     // 5. Call fal.subscribe and stream updates to the client
@@ -76,7 +92,9 @@ export default async function handler(req, res) {
     // Send an error event to the client
     sendEvent(res, 'error', { message: error.message || 'An unknown error occurred.' });
   } finally {
-    // 7. Close the connection
-    res.end();
+    // 7. Ensure the connection is closed when everything is done
+    if (!res.writableEnded) {
+      res.end();
+    }
   }
 }
