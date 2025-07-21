@@ -2,42 +2,72 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom animations for sparkle effects */
-@keyframes pulse-delayed {
-  0%, 100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 0.8;
-  }
+/* CSS Custom Properties for Design System Colors */
+:root {
+  --color-purple-500: #A855F7;
+  --color-pink-500: #EC4899;
+  --color-purple-900-alpha-20: rgba(88, 28, 135, 0.2);
+  --color-pink-900-alpha-20: rgba(131, 24, 67, 0.2);
+  --color-text-active: #FFFFFF;
+  --color-text-placeholder: #D8B4FE;
+  --color-sparkle-default: #C084FC;
+  --color-sparkle-focus: #F472B6;
+  --color-border-default: rgba(192, 132, 252, 0.3);
+  --color-border-hover: rgba(192, 132, 252, 0.5);
+  --color-border-focus: rgba(244, 114, 182, 0.5);
+  --color-ring-focus: rgba(244, 114, 182, 0.5);
+  --color-border-error: #EF4444;
+  --color-border-disabled: #6B7280;
+  --color-shadow-pink-alpha-30: rgba(236, 72, 153, 0.3);
+  --color-shadow-purple-alpha-20: rgba(147, 51, 234, 0.2);
 }
 
-.animation-delay-500 {
+/* Animation delay utility for sparkle effects */
+.\[animation-delay\:500ms\] {
   animation-delay: 500ms;
 }
 
+/* Accessibility: Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  
+  /* Disable specific animations for reduced motion */
+  .motion-reduce\:animate-none {
+    animation: none !important;
+  }
+  
+  .motion-reduce\:transition-none {
+    transition: none !important;
+  }
+  
+  .motion-reduce\:opacity-40 {
+    opacity: 0.4 !important;
+  }
+  
+  .motion-reduce\:opacity-30 {
+    opacity: 0.3 !important;
+  }
+}
+
 /* Enhanced focus styles for better accessibility */
-.ai-input-focus:focus {
-  box-shadow: 
-    0 0 0 2px rgba(236, 72, 153, 0.3),
-    0 10px 25px rgba(147, 51, 234, 0.2);
+.ai-input-enhanced:focus-visible {
+  outline: 2px solid var(--color-pink-500);
+  outline-offset: 2px;
 }
 
-/* Smooth gradient transitions */
-.gradient-border {
-  background: linear-gradient(45deg, #8b5cf6, #ec4899);
-  background-size: 200% 200%;
-  animation: gradient-shift 3s ease infinite;
-}
-
-@keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  :root {
+    --color-text-placeholder: #E5E7EB;
+    --color-border-default: rgba(255, 255, 255, 0.5);
+    --color-border-hover: rgba(255, 255, 255, 0.7);
+    --color-border-focus: rgba(255, 255, 255, 0.9);
   }
 }
