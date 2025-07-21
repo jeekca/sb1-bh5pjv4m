@@ -1,47 +1,67 @@
 // File: /api/proxy.js
+import { fal } from "@fal-ai/client";
 
-// This is a Node.js serverless function.
-// It will be executed in a secure backend environment.
+// This is a helper function to format and send SSE messages
+const sendEvent = (res, eventName, data) => {
+  res.write(`event: ${eventName}\n`);
+  res.write(`data: ${JSON.stringify(data)}\n\n`);
+};
 
 export default async function handler(req, res) {
-  // 1. Get the secret API key from environment variables.
-  //    process.env is how you access them in a Node.js environment.
-  const apiKey = process.env.THIRD_PARTY_API_KEY;
-
+  // 1. Get the secret key from server-side environment variables
+  const apiKey = process.env.FAL_KEY;
   if (!apiKey) {
-    // This is a server-side error, the user doesn't need to know the details.
-    return res.status(500).json({ error: "API key not configured on the server." });
+    return res.status(500).json({ error: "API key not configured." });
   }
 
-  // 2. This is the URL of the actual third-party service you want to call.
-  const apiURL = "https://api.thirdpartyservice.com/v1/some-data";
+  // Configure the fal client with your credentials
+  // This happens securely on the server
+  fal.config({
+    credentials: apiKey,
+  });
+
+  // 2. Get the prompt from the client's request (query parameter)
+  const { prompt } = req.query;
+  if (!prompt) {
+    return res.status(400).json({ error: "Prompt is required." });
+  }
+
+  // 3. Set headers for Server-Sent Events (SSE)
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders(); // Flush the headers to establish the connection
 
   try {
-    // 3. Make the actual API call from the server.
-    //    We securely add the API key in the Authorization header.
-    //    (Check the third-party service's docs for how they expect the key).
-    const apiResponse = await fetch(apiURL, {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`, // or 'x-api-key', etc.
-        'Content-Type': 'application/json',
+    // 4. Call fal.subscribe and stream updates to the client
+    const result = await fal.subscribe("fal-ai/flux-pro/kontext/text-to-image", {
+      input: {
+        // Use the prompt from the client
+        prompt: prompt,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        // Send status updates to the client
+        sendEvent(res, 'status', { status: update.status });
+
+        // Send logs to the client
+        if (update.status === "IN_PROGRESS" && update.logs) {
+          update.logs.forEach((log) => {
+            sendEvent(res, 'log', { message: log.message });
+          });
+        }
       },
     });
 
-    // Error handling for the fetch call itself
-    if (!apiResponse.ok) {
-      // Forward the error status from the third-party API
-      const errorData = await apiResponse.text();
-      return res.status(apiResponse.status).json({ error: `API call failed: ${errorData}` });
-    }
-
-    // 4. Get the data from the third-party service
-    const data = await apiResponse.json();
-
-    // 5. Send the data back to your Three.js front-end.
-    res.status(200).json(data);
+    // 5. Send the final result to the client
+    sendEvent(res, 'result', result);
 
   } catch (error) {
-    // Catch any other errors (e.g., network issues)
-    res.status(500).json({ error: `Internal server error: ${error.message}` });
+    console.error("Error during fal.subscribe:", error);
+    // Send an error event to the client
+    sendEvent(res, 'error', { message: error.message || 'An unknown error occurred.' });
+  } finally {
+    // 6. Close the connection
+    res.end();
   }
 }
