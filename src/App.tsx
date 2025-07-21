@@ -1,6 +1,6 @@
 // src/App.tsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ModelViewer from './components/ModelViewer';
 import FileUploader from './components/FileUploader';
 import AITextInput from './components/AITextInput';
