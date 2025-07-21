@@ -1,4 +1,5 @@
 import React from 'react';
+import { Image } from 'lucide-react';
 
 interface Design {
   id: string;
@@ -23,15 +24,20 @@ const DesignsSection: React.FC<DesignsSectionProps> = ({ designs }) => {
         </div>
         
         {/* Scrollable content area */}
-        <div className="h-full pb-16 overflow-y-auto custom-scrollbar">
+        <div className={`h-full pb-16 overflow-y-auto custom-scrollbar ${
+          designs.length === 0 ? 'flex items-center justify-center' : ''
+        }`}>
           <div className="p-3 space-y-3">
             {designs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
+              {/* Change 2: Conditional vertical alignment - content is centered when empty */}
+              <div className="flex flex-col items-center justify-center text-center">
+                {/* Change 3: Icon replacement - replaced generic div with Image icon */}
                 <div className="w-12 h-12 rounded-full bg-purple-500/20 flex items-center justify-center mb-3">
-                  <div className="w-6 h-6 rounded bg-purple-400/40"></div>
+                  <Image className="w-6 h-6 text-purple-400" />
                 </div>
                 <p className="text-gray-400 text-sm">No designs yet</p>
-                <p className="text-gray-500 text-xs mt-1">Upload images to see them here</p>
+                {/* Change 1: Text modification - updated helper text */}
+                <p className="text-gray-500 text-xs mt-1">Created designs will be added here</p>
               </div>
             ) : (
               designs.map((design) => (
