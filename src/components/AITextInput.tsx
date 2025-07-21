@@ -27,9 +27,10 @@ const AITextInput: React.FC<AITextInputProps> = ({
       setIsLoading(true);
       setIsFocused(false); // Remove focus during loading
       
-      // Auto-disable loading after 3 seconds
+      // Auto-disable loading after 3 seconds and return to focused state
       setTimeout(() => {
         setIsLoading(false);
+        setIsFocused(true);
       }, 3000);
     }
   };
